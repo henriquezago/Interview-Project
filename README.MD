@@ -35,6 +35,35 @@ Start the frontend server:
 npm run dev
 ```
 
-Open `http://localhost:5173` in a browser. Select **Ping backend** to display the message from the backend.
+Open `http://localhost:5173` in a browser. Enter a name to open the Weekly
+Performance Report. Open the application in another tab with a different name to
+see the viewer list update in real time.
 
 Press `Ctrl+C` in each terminal to stop the servers.
+
+## Architecture
+
+The browser keeps a Server-Sent Events connection open while a user views a
+report. The Go server stores each connection in a concurrency-safe in-memory hub
+and broadcasts a new snapshot when someone connects or disconnects. Viewer names
+are deduplicated, so the same user can have multiple tabs open safely.
+
+Presence is scoped by report ID. The current UI uses `weekly-performance`, while
+the endpoint supports additional reports at:
+
+```text
+GET /api/reports/{reportID}/presence?name={viewerName}
+```
+
+State is intentionally ephemeral and local to one server process. Production
+authentication and a shared presence store such as Redis are outside this
+exercise's scope.
+
+## Checks
+
+```sh
+GOCACHE=/tmp/hype10-go-cache go test -race .
+cd frontend
+npm run build
+npm run lint
+```
