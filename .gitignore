@@ -1,0 +1,28 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Go coverage and build output
+*.out
+/Interview-Project
+
+# Environment
+.env
+.env.*
+
+# Dependencies and build artifacts
+node_modules/
+vendor/
+dist/
+coverage/
+
+# OS and editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
