@@ -16,17 +16,30 @@ func newPresenceService() *presenceService {
 	return &presenceService{reports: make(map[string]*presenceHub)}
 }
 
-func (s *presenceService) forReport(reportID string) *presenceHub {
+func (s *presenceService) subscribe(reportID, name string) *presenceSubscription {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if hub, ok := s.reports[reportID]; ok {
-		return hub
+	hub, ok := s.reports[reportID]
+	if !ok {
+		hub = &presenceHub{subscriptions: make(map[*presenceSubscription]struct{})}
+		s.reports[reportID] = hub
+	}
+	return hub.subscribe(name)
+}
+
+func (s *presenceService) unsubscribe(reportID string, subscription *presenceSubscription) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	hub, ok := s.reports[reportID]
+	if !ok {
+		return
 	}
 
-	hub := &presenceHub{subscriptions: make(map[*presenceSubscription]struct{})}
-	s.reports[reportID] = hub
-	return hub
+	if hub.unsubscribe(subscription) {
+		delete(s.reports, reportID)
+	}
 }
 
 // Each browser connection gets its own subscription. The displayed snapshot is
@@ -55,16 +68,18 @@ func (h *presenceHub) subscribe(name string) *presenceSubscription {
 	return subscription
 }
 
-func (h *presenceHub) unsubscribe(subscription *presenceSubscription) {
+// unsubscribe reports whether the hub is empty after removing subscription.
+func (h *presenceHub) unsubscribe(subscription *presenceSubscription) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
 	if _, ok := h.subscriptions[subscription]; !ok {
-		return
+		return len(h.subscriptions) == 0
 	}
 
 	delete(h.subscriptions, subscription)
 	h.broadcastLocked()
+	return len(h.subscriptions) == 0
 }
 
 func (h *presenceHub) broadcastLocked() {
